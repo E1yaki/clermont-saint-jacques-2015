@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101827">
+  <meta name="description" content="Vidéothèque privée du Clermont Saint-Jacques 2015">
+  <title>Clermont Saint-Jacques 2015 — Vidéothèque</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="Accueil vidéothèque">
+      <span class="brand-mark">CSJ</span>
+      <span><strong>CLERMONT SAINT-JACQUES</strong><small>VIDÉOTHÈQUE · 2015</small></span>
+    </a>
+    <div class="top-actions">
+      <span id="connection-status" class="status-pill"><i></i> Connexion…</span>
+      <button id="admin-toggle" class="button button-quiet hidden" type="button">Administration</button>
+      <button id="logout-button" class="button button-quiet hidden" type="button">Déconnexion</button>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section id="access-view" class="access-layout">
+      <div class="hero-copy">
+        <div class="eyebrow"><span class="eyebrow-line"></span> LES SOUVENIRS DU TERRAIN</div>
+        <h1>Chaque match<br>raconte <em>une histoire.</em></h1>
+        <p>Retrouvez les matchs, les actions et les moments forts de nos jeunes joueurs dans un espace vidéo privé.</p>
+        <div class="hero-foot"><span class="lock-icon">▣</span> Accès réservé aux personnes disposant du lien privé.</div>
+      </div>
+      <div class="access-card panel">
+        <div class="card-kicker">ESPACE PRIVÉ</div>
+        <h2>Bienvenue dans la vidéothèque</h2>
+        <p class="muted">Saisissez votre lien secret pour accéder aux vidéos.</p>
+        <form id="viewer-login-form" class="form-stack">
+          <label for="viewer-token">Code d'accès</label>
+          <input id="viewer-token" type="password" autocomplete="off" placeholder="Votre code secret" required>
+          <button class="button button-primary button-full" type="submit">Accéder à la vidéothèque <span>→</span></button>
+          <p id="viewer-login-error" class="form-error" role="alert"></p>
+        </form>
+        <div class="card-divider"><span>ADMINISTRATEUR</span></div>
+        <button id="show-admin-login" class="text-button" type="button">Se connecter à l'administration →</button>
+        <form id="admin-login-form" class="form-stack hidden">
+          <label for="admin-password">Mot de passe administrateur</label>
+          <input id="admin-password" type="password" autocomplete="current-password" placeholder="Mot de passe" required>
+          <button class="button button-secondary button-full" type="submit">Connexion administrateur</button>
+          <p id="admin-login-error" class="form-error" role="alert"></p>
+        </form>
+      </div>
+    </section>
+
+    <section id="library-view" class="hidden">
+      <div class="page-heading">
+        <div><div class="eyebrow"><span class="eyebrow-line"></span> ARCHIVES DU CLUB</div><h1>La vidéothèque<span class="heading-dot">.</span></h1><p class="muted">Les matchs et les meilleurs moments, réunis au même endroit.</p></div>
+        <div class="library-count"><strong id="video-count">0</strong><span>VIDÉOS</span></div>
+      </div>
+      <div class="filter-bar panel">
+        <div class="search-wrap"><span class="search-icon">⌕</span><input id="search-input" type="search" placeholder="Rechercher un match, un joueur, une description…"></div>
+        <select id="year-filter" aria-label="Filtrer par année"><option value="">Toutes les années</option></select>
+        <select id="category-filter" aria-label="Filtrer par catégorie"><option value="">Toutes les catégories</option></select>
+        <button id="reset-filters" class="button button-quiet" type="button">Réinitialiser</button>
+      </div>
+      <div id="library-message" class="notice hidden"></div>
+      <div id="video-grid" class="video-grid"></div>
+      <div id="empty-state" class="empty-state hidden"><div class="empty-icon">◫</div><h3>Aucune vidéo trouvée</h3><p>Modifiez vos filtres ou revenez un peu plus tard.</p></div>
+    </section>
+
+    <section id="admin-view" class="hidden">
+      <div class="page-heading admin-heading"><div><div class="eyebrow"><span class="eyebrow-line"></span> PILOTAGE</div><h1>Administration<span class="heading-dot">.</span></h1><p class="muted">Gérez les vidéos, les catégories et le stockage.</p></div><button id="back-library" class="button button-quiet" type="button">← Retour à la vidéothèque</button></div>
+      <div class="stats-grid">
+        <article class="stat-card panel"><span class="stat-label">VIDÉOS EN LIGNE</span><strong id="stat-videos">—</strong><small>Dans la vidéothèque</small></article>
+        <article class="stat-card panel"><span class="stat-label">VISITES</span><strong id="stat-visits">—</strong><small><span id="stat-visitors">—</span> visiteurs estimés</small></article>
+        <article class="stat-card panel"><span class="stat-label">LECTURES</span><strong id="stat-plays">—</strong><small><span id="stat-watchtime">—</span> visionnées</small></article>
+        <article class="stat-card panel"><span class="stat-label">STOCKAGE UTILISÉ</span><strong id="stat-storage">—</strong><small id="stat-storage-detail">Limite gratuite : 10 Go</small><div class="storage-track"><span id="storage-progress"></span></div></article>
+      </div>
+      <div class="admin-columns">
+        <section class="panel admin-panel">
+          <div class="section-title"><div><div class="card-kicker">NOUVELLE PUBLICATION</div><h2>Ajouter une vidéo</h2></div><span class="section-symbol">＋</span></div>
+          <form id="upload-form" class="form-stack">
+            <div class="field-grid"><div><label for="video-title">Titre *</label><input id="video-title" maxlength="200" placeholder="Ex. : Match U11 – Tournoi" required></div><div><label for="video-file">Fichier vidéo MP4 *</label><input id="video-file" type="file" accept="video/mp4,.mp4" required></div></div>
+            <label for="video-description">Description</label><textarea id="video-description" rows="3" maxlength="3000" placeholder="Quelques précisions sur la rencontre…"></textarea>
+            <div class="field-grid three-fields"><div><label for="video-date">Date</label><input id="video-date" type="date"></div><div><label for="video-year">Année</label><input id="video-year" type="number" min="2000" max="2100" placeholder="2026"></div><div><label for="video-category">Catégorie *</label><select id="video-category" required></select></div></div>
+            <label for="video-people">Personnes présentes</label><input id="video-people" placeholder="Prénoms séparés par des virgules">
+            <div id="upload-progress-wrap" class="upload-progress-wrap hidden"><div class="progress-caption"><span id="upload-status">Préparation…</span><strong id="upload-percent">0 %</strong></div><div class="progress-track"><span id="upload-progress"></span></div></div>
+            <button id="upload-button" class="button button-primary" type="submit">Envoyer la vidéo <span>↑</span></button>
+            <p class="muted tiny">Les fichiers sont envoyés directement vers le stockage privé. Taille maximale : quota disponible (10 Go au total).</p>
+            <p id="upload-error" class="form-error" role="alert"></p>
+          </form>
+        </section>
+        <section class="panel admin-panel">
+          <div class="section-title"><div><div class="card-kicker">ORGANISATION</div><h2>Catégories</h2></div><span class="section-symbol">⌘</span></div>
+          <form id="category-form" class="inline-form"><input id="new-category" maxlength="50" placeholder="Ex. : U13" required><button class="button button-secondary" type="submit">Ajouter</button></form>
+          <div id="category-list" class="category-list"></div>
+          <div class="admin-separator"></div>
+          <div class="section-title"><div><div class="card-kicker">ACCÈS PARTAGÉ</div><h2>Lien privé</h2></div><span class="section-symbol">↗</span></div>
+          <p class="muted small">Collez le code secret des visiteurs configuré dans Cloudflare pour créer un lien d'accès à partager.</p>
+          <div class="inline-form"><input id="share-token" type="password" autocomplete="off" placeholder="Code secret des visiteurs"><button id="make-share-link" class="button button-secondary" type="button">Créer</button></div>
+          <div id="share-result" class="share-result hidden"><input id="share-url" readonly><button id="copy-share-link" class="button button-quiet" type="button">Copier</button></div>
+          <p id="share-error" class="form-error" role="alert"></p>
+        </section>
+      </div>
+      <section class="panel admin-panel video-management"><div class="section-title"><div><div class="card-kicker">CONTENU PUBLIÉ</div><h2>Gérer les vidéos</h2></div><button id="refresh-admin" class="button button-quiet" type="button">↻ Actualiser</button></div><div id="admin-video-list" class="admin-video-list"></div></section>
+      <section class="panel admin-panel top-videos-panel"><div class="section-title"><div><div class="card-kicker">AUDIENCE</div><h2>Vidéos les plus regardées</h2></div></div><div id="top-videos" class="top-videos"></div></section>
+    </section>
+  </main>
+
+  <footer class="footer"><span>CLERMONT SAINT-JACQUES · 2015</span><span>UN ESPACE PRIVÉ POUR LES SOUVENIRS DU CLUB</span></footer>
+
+  <div id="player-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="player-title"><div class="modal-backdrop" data-close-player></div><div class="player-dialog"><div class="player-top"><div><span class="card-kicker">LECTURE VIDÉO</span><h2 id="player-title">Vidéo</h2></div><button id="close-player" class="close-button" aria-label="Fermer" type="button">×</button></div><video id="video-player" controls playsinline preload="metadata"></video><p id="player-description" class="muted small"></p></div></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>
