@@ -72,15 +72,56 @@
   async function logEvent(type, videoId, duration) { try { await api('/api/events',{method:'POST',body:JSON.stringify({event_type:type,video_id:videoId,visitor_id:state.visitorId,duration_seconds:Math.floor(duration||0)})}); } catch(e) { /* Les statistiques ne doivent pas bloquer la lecture. */ } }
   async function openVideo(id) {
     const video=state.videos.find(v=>v.id===id); if(!video) return;
+    const player=$('video-player');
+    const playerStatus=$('player-status');
     try {
+      player.pause();
+      player.removeAttribute('src');
+      player.load();
+      $('player-title').textContent=video.title;
+      $('player-description').textContent=video.description||'';
+      playerStatus.textContent='Préparation de la lecture…';
+      $('player-modal').classList.remove('hidden');
+
+      // Installer les événements AVANT de définir src : les erreurs réseau
+      // peuvent arriver très rapidement sur les premiers octets.
+      player.onloadedmetadata=()=>{
+        playerStatus.textContent=`Vidéo prête · ${Math.floor(player.duration/60)} min ${String(Math.floor(player.duration%60)).padStart(2,'0')} s`;
+      };
+      player.oncanplay=()=>{ playerStatus.textContent='Lecture disponible'; };
+      player.onwaiting=()=>{ playerStatus.textContent='Mise en mémoire tampon…'; };
+      player.onplaying=()=>{ playerStatus.textContent='Lecture en cours'; };
+      player.onplay=()=>{
+        clearInterval(state.progressTimer);
+        state.progressTimer=setInterval(()=>{
+          if(!player.paused && player.currentTime>0) logEvent('progress',id,30);
+        },30000);
+      };
+      player.onpause=()=>clearInterval(state.progressTimer);
+      player.onended=()=>{clearInterval(state.progressTimer);playerStatus.textContent='Lecture terminée';};
+      player.onerror=()=>{
+        clearInterval(state.progressTimer);
+        const code=player.error?.code;
+        const messages={
+          1:'Chargement interrompu.',
+          2:'Erreur réseau pendant le chargement. Vérifie la route vidéo et les requêtes HTTP Range du Worker.',
+          3:'Le fichier a été reçu mais son décodage a échoué. Le codec vidéo/audio du MP4 n’est peut-être pas compatible.',
+          4:'Format ou source vidéo non reconnu.'
+        };
+        const message=messages[code]||'Impossible de charger la vidéo. Vérifie le ticket de lecture et la réponse du Worker.';
+        playerStatus.textContent=message;
+        toast(message);
+      };
+
       const data=await api(`/api/video/${encodeURIComponent(id)}/ticket`);
-      state.activeVideo=video; $('player-title').textContent=video.title; $('player-description').textContent=video.description||'';
-      const player=$('video-player'); player.pause(); player.removeAttribute('src'); player.load(); player.src=`${API}/api/video/${encodeURIComponent(id)}?ticket=${encodeURIComponent(data.ticket)}`; $('player-modal').classList.remove('hidden'); player.load();
+      player.crossOrigin='anonymous';
+      player.src=`${API}/api/video/${encodeURIComponent(id)}?ticket=${encodeURIComponent(data.ticket)}`;
+      player.load();
       await logEvent('play',id,0);
-      player.onplay=()=>{clearInterval(state.progressTimer); state.progressTimer=setInterval(()=>{if(!player.paused && player.currentTime>0) logEvent('progress',id,30);},30000);};
-      player.onpause=()=>clearInterval(state.progressTimer); player.onended=()=>clearInterval(state.progressTimer);
-      player.onerror=()=>toast('Le navigateur ne parvient pas à charger cette vidéo. Vérifie que le fichier MP4 est lisible.');
-    } catch(error) { toast(`Lecture impossible : ${error.message}`); }
+    } catch(error) {
+      playerStatus.textContent=`Lecture impossible : ${error.message}`;
+      toast(`Lecture impossible : ${error.message}`);
+    }
   }
   function closePlayer() { const p=$('video-player'); p.pause(); p.removeAttribute('src'); p.load(); clearInterval(state.progressTimer); $('player-modal').classList.add('hidden'); state.activeVideo=null; }
   async function loadStats() {
