@@ -4,6 +4,7 @@
   const API = 'https://clermont-videotheque.gariffi.workers.dev';
   const PART_SIZE = 8 * 1024 * 1024;
   const $ = (id) => document.getElementById(id);
+  const sortCategories = (items) => [...items].sort((a, b) => String(a).localeCompare(String(b), 'fr', { numeric: true, sensitivity: 'base' }));
   const state = { token: sessionStorage.getItem('csj_session') || '', role: sessionStorage.getItem('csj_role') || '', videos: [], categories: [], activeVideo: null, visitorId: getVisitorId(), progressTimer: null };
 
   function getVisitorId() {
@@ -40,7 +41,7 @@
     catch(error) { clearSession(); showView('access'); setStatus(false,'Accès refusé'); $('viewer-login-error').textContent=error.message; }
   }
   async function loadCategories() {
-    const data=await api('/api/categories'); state.categories=(data.categories||[]).map(x=>x.name);
+    const data=await api('/api/categories'); state.categories=sortCategories((data.categories||[]).map(x=>x.name));
     const filters=$('category-filter'), upload=$('video-category'), previous=filters.value, previousUpload=upload.value;
     filters.innerHTML='<option value="">Toutes les catégories</option>'+state.categories.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
     upload.innerHTML=state.categories.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
@@ -74,10 +75,11 @@
     try {
       const data=await api(`/api/video/${encodeURIComponent(id)}/ticket`);
       state.activeVideo=video; $('player-title').textContent=video.title; $('player-description').textContent=video.description||'';
-      const player=$('video-player'); player.pause(); player.removeAttribute('src'); player.load(); player.src=`${API}/api/video/${encodeURIComponent(id)}?ticket=${encodeURIComponent(data.ticket)}`; $('player-modal').classList.remove('hidden');
+      const player=$('video-player'); player.pause(); player.removeAttribute('src'); player.load(); player.src=`${API}/api/video/${encodeURIComponent(id)}?ticket=${encodeURIComponent(data.ticket)}`; $('player-modal').classList.remove('hidden'); player.load();
       await logEvent('play',id,0);
       player.onplay=()=>{clearInterval(state.progressTimer); state.progressTimer=setInterval(()=>{if(!player.paused && player.currentTime>0) logEvent('progress',id,30);},30000);};
       player.onpause=()=>clearInterval(state.progressTimer); player.onended=()=>clearInterval(state.progressTimer);
+      player.onerror=()=>toast('Le navigateur ne parvient pas à charger cette vidéo. Vérifie que le fichier MP4 est lisible.');
     } catch(error) { toast(`Lecture impossible : ${error.message}`); }
   }
   function closePlayer() { const p=$('video-player'); p.pause(); p.removeAttribute('src'); p.load(); clearInterval(state.progressTimer); $('player-modal').classList.add('hidden'); state.activeVideo=null; }
@@ -105,7 +107,7 @@
         parts.push({partNumber:i+1,etag:result.etag}); uploaded+=chunk.size; updateProgress(uploaded,file.size,`Partie ${i+1}/${count} envoyée`);
       }
       updateProgress(file.size,file.size,'Finalisation…'); await api('/api/admin/upload/complete',{method:'POST',body:JSON.stringify({uploadId:created.uploadId,parts})});
-      $('upload-form').reset(); $('upload-year').value=''; toast('Vidéo publiée avec succès.'); await Promise.all([loadVideos(),loadStats()]);
+      $('upload-form').reset(); $('video-year').value=''; toast('Vidéo publiée avec succès.'); await Promise.all([loadVideos(),loadStats()]);
     } catch(e){error.textContent=e.message; toast('Échec de l’envoi.');}
     finally{$('upload-button').disabled=false; setTimeout(()=>$('upload-progress-wrap').classList.add('hidden'),1800);}
   }
