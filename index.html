@@ -16,6 +16,7 @@
       <span><strong>LES 2015 DE CLERMONT SAINT-JACQUES</strong><small>VIDÉOTHÈQUE · 2015</small></span>
     </a>
     <div class="top-actions">
+      <a class="championship-link" href="https://e1yaki.github.io/foot63/" target="_blank" rel="noopener noreferrer">Voir le championnat <span>↗</span></a>
       <span id="connection-status" class="status-pill"><i></i> Connexion…</span>
       <button id="admin-toggle" class="button button-quiet hidden" type="button">Administration</button>
       <button id="logout-button" class="button button-quiet hidden" type="button">Déconnexion</button>
@@ -108,7 +109,22 @@
 
   <footer class="footer"><span>CLERMONT SAINT-JACQUES · 2015</span><span>UN ESPACE PRIVÉ POUR LES SOUVENIRS DU CLUB</span></footer>
 
-  <div id="player-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="player-title"><div class="modal-backdrop" data-close-player></div><div class="player-dialog"><div class="player-top"><div><span class="card-kicker">LECTURE VIDÉO</span><h2 id="player-title">Vidéo</h2></div><button id="close-player" class="close-button" aria-label="Fermer" type="button">×</button></div><video id="video-player" controls playsinline preload="metadata"></video><p id="player-description" class="muted small"></p></div></div>
+  <div id="edit-video-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="edit-video-title">
+    <div class="modal-backdrop" data-close-edit></div>
+    <div class="edit-dialog panel">
+      <div class="player-top"><div><span class="card-kicker">ADMINISTRATION</span><h2 id="edit-video-title">Modifier la vidéo</h2></div><button id="close-edit-video" class="close-button" aria-label="Fermer" type="button">×</button></div>
+      <form id="edit-video-form" class="form-stack">
+        <label for="edit-video-name">Titre *</label><input id="edit-video-name" maxlength="200" required>
+        <label for="edit-video-description">Description</label><textarea id="edit-video-description" rows="3" maxlength="3000"></textarea>
+        <div class="field-grid three-fields"><div><label for="edit-video-date">Date</label><input id="edit-video-date" type="date"></div><div><label for="edit-video-year">Année</label><input id="edit-video-year" type="number" min="2000" max="2100"></div><div><label for="edit-video-category">Catégorie *</label><select id="edit-video-category" required></select></div></div>
+        <label for="edit-video-people">Personnes présentes</label><input id="edit-video-people" placeholder="Prénoms séparés par des virgules">
+        <p id="edit-video-error" class="form-error" role="alert"></p>
+        <div class="edit-actions"><button id="cancel-edit-video" class="button button-quiet" type="button">Annuler</button><button id="save-edit-video" class="button button-primary" type="submit">Enregistrer les modifications</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div id="player-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="player-title"><div class="modal-backdrop" data-close-player></div><div class="player-dialog"><div class="player-top"><div><span class="card-kicker">LECTURE VIDÉO</span><h2 id="player-title">Vidéo</h2></div><button id="close-player" class="close-button" aria-label="Fermer" type="button">×</button></div><video id="video-player" controls playsinline preload="metadata"></video><p id="player-status" class="player-status" role="status">Préparation de la lecture…</p><p id="player-description" class="muted small"></p></div></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="app.js"></script>
 </body>

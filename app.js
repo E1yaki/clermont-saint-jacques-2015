@@ -15,6 +15,7 @@
     videos: [],
     categories: [],
     activeVideo: null,
+    editingVideo: null,
     visitorId: getVisitorId(),
     progressTimer: null
   };
@@ -141,6 +142,8 @@
     state.categories = sortCategories((data.categories || []).map(x => x.name));
     const filters = $('category-filter');
     const upload = $('video-category');
+    const editCategory = $('edit-video-category');
+    const previousEdit = editCategory ? editCategory.value : '';
     const previous = filters.value;
     const previousUpload = upload.value;
 
@@ -148,6 +151,11 @@
       state.categories.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
     upload.innerHTML = state.categories.map(c =>
       `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+    if (editCategory) {
+      editCategory.innerHTML = state.categories.map(c =>
+        `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+      if (state.categories.includes(previousEdit)) editCategory.value = previousEdit;
+    }
 
     if (state.categories.includes(previous)) filters.value = previous;
     if (state.categories.includes(previousUpload)) upload.value = previousUpload;
@@ -209,13 +217,15 @@
   // Le bouton Supprimer reste indépendant du clic sur la ligne.
   function renderAdminVideos() {
     $('admin-video-list').innerHTML = state.videos.map(v => `
-      <div class="admin-video-row" data-play="${escapeHtml(v.id)}"
-           role="button" tabindex="0" title="Cliquer pour lire la vidéo">
-        <div>
+      <div class="admin-video-row">
+        <div class="admin-video-main" data-play="${escapeHtml(v.id)}" role="button" tabindex="0" title="Cliquer pour lire la vidéo">
           <strong>${escapeHtml(v.title)}</strong>
           <small>${escapeHtml(v.category || '—')} · ${escapeHtml(v.year || 'Année non précisée')} · ${formatBytes(v.size_bytes)}</small>
         </div>
-        <button class="delete-button" type="button" data-delete="${escapeHtml(v.id)}">Supprimer</button>
+        <div class="admin-video-actions">
+          <button class="edit-button" type="button" data-edit="${escapeHtml(v.id)}">Modifier</button>
+          <button class="delete-button" type="button" data-delete="${escapeHtml(v.id)}">Supprimer</button>
+        </div>
       </div>
     `).join('') || '<p class="muted small">Aucune vidéo publiée pour le moment.</p>';
   }
@@ -422,6 +432,56 @@
     } catch (e) { toast(e.message); }
   }
 
+  function openEditVideo(id) {
+    const video = state.videos.find(v => String(v.id) === String(id));
+    if (!video || state.role !== 'admin') return;
+    state.editingVideo = video;
+    let people = [];
+    try { people = JSON.parse(video.people || '[]'); } catch { people = []; }
+    $('edit-video-name').value = video.title || '';
+    $('edit-video-description').value = video.description || '';
+    $('edit-video-date').value = video.recorded_date || '';
+    $('edit-video-year').value = video.year || '';
+    $('edit-video-category').value = video.category || state.categories[0] || '';
+    $('edit-video-people').value = people.join(', ');
+    $('edit-video-error').textContent = '';
+    $('edit-video-modal').classList.remove('hidden');
+  }
+
+  function closeEditVideo() {
+    $('edit-video-modal').classList.add('hidden');
+    state.editingVideo = null;
+  }
+
+  async function saveVideoEdits(event) {
+    event.preventDefault();
+    const video = state.editingVideo;
+    if (!video) return;
+    const button = $('save-edit-video');
+    button.disabled = true;
+    $('edit-video-error').textContent = '';
+    const payload = {
+      title: $('edit-video-name').value.trim(),
+      description: $('edit-video-description').value.trim(),
+      recorded_date: $('edit-video-date').value || null,
+      year: $('edit-video-year').value ? Number($('edit-video-year').value) : null,
+      category: $('edit-video-category').value,
+      people: $('edit-video-people').value.split(',').map(x => x.trim()).filter(Boolean)
+    };
+    try {
+      await api(`/api/admin/videos/${encodeURIComponent(video.id)}`, {
+        method: 'PUT', body: JSON.stringify(payload)
+      });
+      closeEditVideo();
+      await loadVideos();
+      toast('Informations de la vidéo mises à jour.');
+    } catch (error) {
+      $('edit-video-error').textContent = error.message;
+    } finally {
+      button.disabled = false;
+    }
+  }
+
   async function deleteVideo(id) {
     const video = state.videos.find(v => String(v.id) === String(id));
     if (!video || !confirm(`Supprimer définitivement « ${video.title} » et son fichier vidéo ?`)) return;
@@ -439,8 +499,9 @@
       $('share-error').textContent = 'Saisis le code secret des visiteurs.';
       return;
     }
-    const url = new URL(location.href);
-    url.hash = `access=${encodeURIComponent(secret)}`;
+    const url = new URL(location.pathname, location.origin);
+    url.search = '';
+    url.hash = new URLSearchParams({ access: secret }).toString();
     $('share-url').value = url.toString();
     $('share-result').classList.remove('hidden');
   }
@@ -516,6 +577,12 @@
         deleteVideo(deleteButton.dataset.delete);
         return;
       }
+      const editButton = e.target.closest('[data-edit]');
+      if (editButton) {
+        e.stopPropagation();
+        openEditVideo(editButton.dataset.edit);
+        return;
+      }
       const row = e.target.closest('[data-play]');
       if (row) openVideo(row.dataset.play);
     });
@@ -527,6 +594,13 @@
         e.preventDefault();
         openVideo(row.dataset.play);
       }
+    });
+
+    $('edit-video-form').addEventListener('submit', saveVideoEdits);
+    $('close-edit-video').addEventListener('click', closeEditVideo);
+    $('cancel-edit-video').addEventListener('click', closeEditVideo);
+    $('edit-video-modal').addEventListener('click', e => {
+      if (e.target.hasAttribute('data-close-edit')) closeEditVideo();
     });
 
     $('refresh-admin').addEventListener('click', () =>
@@ -553,22 +627,24 @@
       setStatus(true, 'API disponible');
     } catch { setStatus(false, 'API inaccessible'); }
 
-    if (state.token) {
-      await enterLibrary();
-      return;
-    }
-    const fragment = new URLSearchParams(location.hash.slice(1));
+    // Un lien privé doit primer sur une ancienne session éventuellement expirée.
+    const fragment = new URLSearchParams(location.hash.replace(/^#/, ''));
     const secret = fragment.get('access');
     if (secret) {
+      clearSession();
       history.replaceState(null, '', location.pathname + location.search);
       try { await viewerLogin(secret); }
       catch (e) {
         $('viewer-login-error').textContent = e.message;
         showView('access');
       }
-    } else {
-      showView('access');
+      return;
     }
+    if (state.token) {
+      await enterLibrary();
+      return;
+    }
+    showView('access');
   }
 
   function debounce(fn, delay) {
