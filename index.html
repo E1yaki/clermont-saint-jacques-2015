@@ -84,6 +84,7 @@
             <label for="video-description">Description</label><textarea id="video-description" rows="3" maxlength="3000" placeholder="Quelques précisions sur la rencontre…"></textarea>
             <div class="field-grid three-fields"><div><label for="video-date">Date</label><input id="video-date" type="date"></div><div><label for="video-year">Année</label><input id="video-year" type="number" min="2000" max="2100" placeholder="2026"></div><div><label for="video-category">Catégorie *</label><select id="video-category" required></select></div></div>
             <label for="video-people">Personnes présentes</label><input id="video-people" placeholder="Prénoms séparés par des virgules">
+            <div><label for="video-thumbnail-second">Image d’aperçu — seconde exacte dans la vidéo</label><input id="video-thumbnail-second" type="number" min="0" step="0.1" value="5" placeholder="Ex. : 12.5"><small class="muted tiny">Une image sera extraite automatiquement à cette seconde.</small></div>
             <div id="upload-progress-wrap" class="upload-progress-wrap hidden"><div class="progress-caption"><span id="upload-status">Préparation…</span><strong id="upload-percent">0 %</strong></div><div class="progress-track"><span id="upload-progress"></span></div></div>
             <button id="upload-button" class="button button-primary" type="submit">Envoyer la vidéo <span>↑</span></button>
             <p class="muted tiny">Les fichiers sont envoyés directement vers le stockage privé. Taille maximale : quota disponible (10 Go au total).</p>
@@ -99,6 +100,7 @@
           <p class="muted small">Collez le code secret des visiteurs configuré dans Cloudflare pour créer un lien d'accès à partager.</p>
           <div class="inline-form"><input id="share-token" type="password" autocomplete="off" placeholder="Code secret des visiteurs"><button id="make-share-link" class="button button-secondary" type="button">Créer</button></div>
           <div id="share-result" class="share-result hidden"><input id="share-url" readonly><button id="copy-share-link" class="button button-quiet" type="button">Copier</button></div>
+          <button id="delete-share-link" class="button button-danger share-delete hidden" type="button">Supprimer le lien enregistré</button>
           <p id="share-error" class="form-error" role="alert"></p>
         </section>
       </div>
@@ -118,6 +120,7 @@
         <label for="edit-video-description">Description</label><textarea id="edit-video-description" rows="3" maxlength="3000"></textarea>
         <div class="field-grid three-fields"><div><label for="edit-video-date">Date</label><input id="edit-video-date" type="date"></div><div><label for="edit-video-year">Année</label><input id="edit-video-year" type="number" min="2000" max="2100"></div><div><label for="edit-video-category">Catégorie *</label><select id="edit-video-category" required></select></div></div>
         <label for="edit-video-people">Personnes présentes</label><input id="edit-video-people" placeholder="Prénoms séparés par des virgules">
+        <div><label for="edit-thumbnail-second">Nouvelle vignette — seconde exacte</label><input id="edit-thumbnail-second" type="number" min="0" step="0.1" value="0"><small class="muted tiny">À l’enregistrement, l’image sera extraite de la vidéo à cette seconde.</small></div>
         <p id="edit-video-error" class="form-error" role="alert"></p>
         <div class="edit-actions"><button id="cancel-edit-video" class="button button-quiet" type="button">Annuler</button><button id="save-edit-video" class="button button-primary" type="submit">Enregistrer les modifications</button></div>
       </form>

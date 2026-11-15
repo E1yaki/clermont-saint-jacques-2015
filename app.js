@@ -17,7 +17,8 @@
     activeVideo: null,
     editingVideo: null,
     visitorId: getVisitorId(),
-    progressTimer: null
+    progressTimer: null,
+    shareUrl: localStorage.getItem('csj_share_url') || ''
   };
 
   function getVisitorId() {
@@ -200,6 +201,7 @@
         .filter(Boolean).map(escapeHtml).join('<span>·</span>');
       return `<article class="video-card">
         <div class="video-thumb" role="button" tabindex="0" data-play="${escapeHtml(v.id)}">
+          ${v.thumbnail_data ? `<img class="video-poster" src="${escapeHtml(v.thumbnail_data)}" alt="Aperçu de ${escapeHtml(v.title)}" loading="lazy">` : ''}
           <span class="thumb-category">${escapeHtml(v.category || 'VIDÉO')}</span>
           <span class="play-button">▶</span>
           <span class="thumb-year">${escapeHtml(v.year || 'CLUB')}</span>
@@ -339,6 +341,7 @@
 
   async function showAdmin() {
     if (state.role !== 'admin') return;
+    renderSavedShareLink();
     try {
       await Promise.all([loadCategories(), loadVideos(), loadStats()]);
       showView('admin');
@@ -375,6 +378,12 @@
     };
 
     try {
+      const thumbnailSecond = Number($('video-thumbnail-second').value || 0);
+      let thumbnailData = '';
+      if ($('video-thumbnail-second').value.trim() !== '') {
+        try { thumbnailData = await captureThumbnailFromFile(file, thumbnailSecond); }
+        catch (thumbError) { throw new Error(`Vignette impossible : ${thumbError.message}`); }
+      }
       const metadata = {
         filename: file.name,
         title,
@@ -404,9 +413,14 @@
       }
 
       updateProgress(file.size, file.size, 'Finalisation…');
-      await api('/api/admin/upload/complete', {
+      const completed = await api('/api/admin/upload/complete', {
         method: 'POST', body: JSON.stringify({ uploadId: created.uploadId, parts })
       });
+      if (thumbnailData && completed.videoId) {
+        await api(`/api/admin/videos/${encodeURIComponent(completed.videoId)}/thumbnail`, {
+          method: 'POST', body: JSON.stringify({ thumbnail_data: thumbnailData, thumbnail_second: thumbnailSecond })
+        });
+      }
       $('upload-form').reset();
       $('video-year').value = '';
       toast('Vidéo publiée avec succès.');
@@ -444,6 +458,7 @@
     $('edit-video-year').value = video.year || '';
     $('edit-video-category').value = video.category || state.categories[0] || '';
     $('edit-video-people').value = people.join(', ');
+    $('edit-thumbnail-second').value = video.thumbnail_second ?? 0;
     $('edit-video-error').textContent = '';
     $('edit-video-modal').classList.remove('hidden');
   }
@@ -460,6 +475,7 @@
     const button = $('save-edit-video');
     button.disabled = true;
     $('edit-video-error').textContent = '';
+    const thumbnailSecond = Number($('edit-thumbnail-second').value || 0);
     const payload = {
       title: $('edit-video-name').value.trim(),
       description: $('edit-video-description').value.trim(),
@@ -470,8 +486,14 @@
     };
     try {
       await api(`/api/admin/videos/${encodeURIComponent(video.id)}`, {
-        method: 'PUT', body: JSON.stringify(payload)
+        method: 'PUT', body: JSON.stringify({ ...payload, thumbnail_second: thumbnailSecond })
       });
+      if ($('edit-thumbnail-second').value.trim() !== '') {
+        const thumbnailData = await captureThumbnailFromVideo(video.id, thumbnailSecond);
+        await api(`/api/admin/videos/${encodeURIComponent(video.id)}/thumbnail`, {
+          method: 'POST', body: JSON.stringify({ thumbnail_data: thumbnailData, thumbnail_second: thumbnailSecond })
+        });
+      }
       closeEditVideo();
       await loadVideos();
       toast('Informations de la vidéo mises à jour.');
@@ -492,6 +514,14 @@
     } catch (e) { toast(e.message); }
   }
 
+  function renderSavedShareLink() {
+    const saved = localStorage.getItem('csj_share_url') || '';
+    state.shareUrl = saved;
+    $('share-url').value = saved;
+    $('share-result').classList.toggle('hidden', !saved);
+    $('delete-share-link').classList.toggle('hidden', !saved);
+  }
+
   function makeShareLink() {
     const secret = $('share-token').value.trim();
     $('share-error').textContent = '';
@@ -500,10 +530,63 @@
       return;
     }
     const url = new URL(location.pathname, location.origin);
-    url.search = '';
-    url.hash = new URLSearchParams({ access: secret }).toString();
-    $('share-url').value = url.toString();
-    $('share-result').classList.remove('hidden');
+    url.searchParams.set('access', secret);
+    const shareUrl = url.toString();
+    localStorage.setItem('csj_share_url', shareUrl);
+    $('share-token').value = '';
+    renderSavedShareLink();
+    toast('Lien privé créé et conservé.');
+  }
+
+  function deleteShareLink() {
+    if (!confirm('Supprimer le lien privé enregistré sur cet appareil ?')) return;
+    localStorage.removeItem('csj_share_url');
+    renderSavedShareLink();
+    toast('Lien privé supprimé de cet appareil.');
+  }
+
+  function captureThumbnailFromFile(file, seconds) {
+    const objectUrl = URL.createObjectURL(file);
+    return captureFrame(objectUrl, seconds, false).finally(() => URL.revokeObjectURL(objectUrl));
+  }
+
+  async function captureThumbnailFromVideo(videoId, seconds) {
+    const ticketData = await api(`/api/video/${encodeURIComponent(videoId)}/ticket`);
+    const src = `${API}/api/video/${encodeURIComponent(videoId)}?ticket=${encodeURIComponent(ticketData.ticket)}`;
+    return captureFrame(src, seconds, true);
+  }
+
+  function captureFrame(src, seconds, crossOrigin) {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement('video');
+      video.muted = true;
+      video.playsInline = true;
+      video.preload = 'auto';
+      if (crossOrigin) video.crossOrigin = 'anonymous';
+      const cleanup = () => { video.removeAttribute('src'); video.load(); };
+      video.onerror = () => { cleanup(); reject(new Error('le navigateur ne peut pas charger la vidéo pour extraire l’image.')); };
+      video.onloadedmetadata = () => {
+        const target = Math.max(0, Number(seconds) || 0);
+        if (target > video.duration) { cleanup(); reject(new Error(`la vidéo dure ${video.duration.toFixed(1)} secondes seulement.`)); return; }
+        video.currentTime = target;
+      };
+      video.onseeked = () => {
+        try {
+          const width = 640, height = 360;
+          const canvas = document.createElement('canvas');
+          canvas.width = width; canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#101820'; ctx.fillRect(0, 0, width, height);
+          const scale = Math.min(width / video.videoWidth, height / video.videoHeight);
+          const w = video.videoWidth * scale, h = video.videoHeight * scale;
+          ctx.drawImage(video, (width-w)/2, (height-h)/2, w, h);
+          const data = canvas.toDataURL('image/jpeg', 0.72);
+          cleanup(); resolve(data);
+        } catch (error) { cleanup(); reject(new Error('extraction impossible (canvas ou sécurité CORS).')); }
+      };
+      video.src = src;
+      video.load();
+    });
   }
 
   async function init() {
@@ -610,6 +693,8 @@
     );
 
     $('make-share-link').addEventListener('click', makeShareLink);
+    $('delete-share-link').addEventListener('click', deleteShareLink);
+    renderSavedShareLink();
     $('copy-share-link').addEventListener('click', async () => {
       try {
         await navigator.clipboard.writeText($('share-url').value);
@@ -629,10 +714,10 @@
 
     // Un lien privé doit primer sur une ancienne session éventuellement expirée.
     const fragment = new URLSearchParams(location.hash.replace(/^#/, ''));
-    const secret = fragment.get('access');
+    const secret = new URLSearchParams(location.search).get('access') || fragment.get('access');
     if (secret) {
       clearSession();
-      history.replaceState(null, '', location.pathname + location.search);
+      history.replaceState(null, '', location.pathname);
       try { await viewerLogin(secret); }
       catch (e) {
         $('viewer-login-error').textContent = e.message;
