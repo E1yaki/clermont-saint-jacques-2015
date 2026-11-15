@@ -819,16 +819,8 @@
     $('video-thumbnail-mode').addEventListener('change', updateThumbnailMode);
     $('edit-thumbnail-mode').addEventListener('change', updateEditThumbnailMode);
     updateThumbnailMode(); updateEditThumbnailMode();
-    $('copy-share-link').addEventListener('click', async () => {
-      try {
-        await navigator.clipboard.writeText($('share-url').value);
-        toast('Lien copié.');
-      } catch {
-        $('share-url').select();
-        document.execCommand('copy');
-        toast('Lien copié.');
-      }
-    });
+    // Ancien bouton de copie global supprimé de l'interface : les liens
+    // disposent chacun de leur propre bouton [data-copy-share].
 
     try {
       const response = await fetch(`${API}/api/health`);
