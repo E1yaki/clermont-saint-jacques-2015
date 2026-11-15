@@ -164,3 +164,64 @@ body{background:radial-gradient(ellipse at 8% 0%,rgba(22,131,75,.16),transparent
 .player-status{margin:10px 0 0;padding:9px 12px;border-radius:9px;background:#edf6ef;color:var(--green-dark);font-size:12px;font-weight:700;min-height:36px}
 .toast{background:var(--red);color:#fff;box-shadow:0 10px 28px rgba(213,43,63,.22)}
 @media(max-width:600px){.player-dialog video{min-height:190px;max-height:58vh}.player-status{font-size:11px}}
+
+
+/* Mode sombre par défaut — le mode clair conserve la palette club existante. */
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --bg:#0b1220; --panel:#111c2d; --panel2:#162337; --line:rgba(186,205,230,.15);
+  --text:#f3f6fb; --muted:#9aabc0; --accent:#16834b; --accent2:#d52b3f;
+  --red:#ef5968; --red-dark:#ff8792; --green-dark:#8fd3a9;
+  --shadow:0 22px 60px rgba(0,0,0,.32);
+}
+html[data-theme="dark"] body {
+  background:radial-gradient(ellipse at 8% 0%,rgba(22,131,75,.18),transparent 34%),radial-gradient(ellipse at 92% 8%,rgba(213,43,63,.13),transparent 32%),var(--bg);
+  color:var(--text);
+}
+html[data-theme="dark"] .topbar {background:rgba(8,15,27,.92);border-bottom:3px solid transparent;border-image:linear-gradient(90deg,var(--accent) 0 50%,var(--accent2) 50% 100%) 1;}
+html[data-theme="dark"] .brand-mark {background:linear-gradient(135deg,var(--accent) 0 50%,var(--accent2) 50% 100%);color:#fff;}
+html[data-theme="dark"] .brand small, html[data-theme="dark"] .status-pill, html[data-theme="dark"] .footer {color:#9aabc0;}
+html[data-theme="dark"] .hero-copy>p, html[data-theme="dark"] .hero-foot {color:#b2bfd0;}
+html[data-theme="dark"] .panel, html[data-theme="dark"] .access-card, html[data-theme="dark"] .stat-card,
+html[data-theme="dark"] .video-card, html[data-theme="dark"] .filter-bar, html[data-theme="dark"] .notice,
+html[data-theme="dark"] .player-dialog {background:#111c2d;color:var(--text);border-color:var(--line);box-shadow:var(--shadow);}
+html[data-theme="dark"] .access-card h2, html[data-theme="dark"] .page-heading h1,
+html[data-theme="dark"] .section-title h2, html[data-theme="dark"] .stat-card strong,
+html[data-theme="dark"] .admin-video-row strong, html[data-theme="dark"] .player-top h2,
+html[data-theme="dark"] .video-info h3, html[data-theme="dark"] .empty-state h3 {color:#f0f6f2;}
+html[data-theme="dark"] .form-stack label, html[data-theme="dark"] label {color:#d0dbe8;}
+html[data-theme="dark"] .form-stack input, html[data-theme="dark"] .form-stack textarea,
+html[data-theme="dark"] .form-stack select, html[data-theme="dark"] .inline-form input,
+html[data-theme="dark"] .filter-bar input, html[data-theme="dark"] .filter-bar select,
+html[data-theme="dark"] .share-result input {background:#0b1525;color:#f3f6fb;border-color:#34445b;}
+html[data-theme="dark"] input::placeholder, html[data-theme="dark"] textarea::placeholder {color:#8192a9;}
+html[data-theme="dark"] .button-quiet {background:#17263a;color:#dce6f2;border-color:#3a4a60;}
+html[data-theme="dark"] .button-quiet:hover {background:#22344c;}
+html[data-theme="dark"] .button-secondary {background:#176b43;color:#fff;border-color:#238453;}
+html[data-theme="dark"] .button-secondary:hover {background:#0f5936;}
+html[data-theme="dark"] .button-primary {background:#d52b3f;color:#fff;}
+html[data-theme="dark"] .button-primary:hover {background:#b91f32;}
+html[data-theme="dark"] .text-button, html[data-theme="dark"] .heading-dot,
+html[data-theme="dark"] .library-count strong, html[data-theme="dark"] .search-icon,
+html[data-theme="dark"] .empty-icon {color:#ef6573;}
+html[data-theme="dark"] .eyebrow, html[data-theme="dark"] .card-kicker {color:#ef7884;}
+html[data-theme="dark"] .page-heading:before {background:linear-gradient(180deg,#16834b 0 50%,#d52b3f 50% 100%);}
+html[data-theme="dark"] .video-card:hover {border-color:rgba(80,190,125,.55);}
+html[data-theme="dark"] .video-thumb {background:linear-gradient(125deg,#0d7040 0%,#16834b 48%,#d52b3f 52%,#a91d30 100%);}
+html[data-theme="dark"] .video-info h3 {color:#f0f6f2;}
+html[data-theme="dark"] .video-meta, html[data-theme="dark"] .video-desc {color:#a2b1c3;}
+html[data-theme="dark"] .thumb-year {color:#fff;}
+html[data-theme="dark"] .storage-track, html[data-theme="dark"] .progress-track {background:#29394e;}
+html[data-theme="dark"] .section-symbol {background:rgba(22,131,75,.18);color:#72c995;border-color:rgba(75,180,115,.25);}
+html[data-theme="dark"] .upload-progress-wrap, html[data-theme="dark"] .top-video {background:#0d1929;border-color:#2b3c52;}
+html[data-theme="dark"] .category-chip {background:rgba(22,131,75,.16);color:#8cdbad;border-color:rgba(70,180,110,.32);}
+html[data-theme="dark"] .category-chip:nth-child(even) {background:rgba(213,43,63,.15);color:#ff9aa4;border-color:rgba(213,43,63,.3);}
+html[data-theme="dark"] .admin-video-row {border-color:var(--line);}
+html[data-theme="dark"] .delete-button {background:rgba(213,43,63,.16);color:#ff9aa4;border-color:rgba(213,43,63,.4);}
+html[data-theme="dark"] .footer {background:#0a1321;border-top-color:var(--line);}
+html[data-theme="dark"] .modal-backdrop {background:rgba(0,0,0,.82);}
+html[data-theme="dark"] .close-button {background:#17263a;color:#ff8b97;border-color:#3a4a60;}
+html[data-theme="dark"] .player-status {background:#173526;color:#a5e0ba;}
+html[data-theme="dark"] .toast {background:#b91f32;color:#fff;}
+html[data-theme="dark"] .theme-toggle {display:flex;align-items:center;gap:7px;}
+@media(max-width:600px){html[data-theme="dark"] .theme-toggle{padding:9px 10px;font-size:11px;}}

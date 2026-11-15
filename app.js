@@ -478,7 +478,27 @@
     } catch (error) { $('share-error').textContent = error.message; }
   }
 
+  function applyTheme(theme) {
+    const selected = theme === 'light' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = selected;
+    localStorage.setItem('csj_theme', selected);
+    const isDark = selected === 'dark';
+    const button = $('theme-toggle');
+    if (button) {
+      button.setAttribute('aria-label', isDark ? 'Passer en mode clair' : 'Passer en mode sombre');
+      button.title = isDark ? 'Passer en mode clair' : 'Passer en mode sombre';
+      $('theme-toggle-icon').textContent = isDark ? '☀' : '☾';
+      $('theme-toggle-label').textContent = isDark ? 'Mode clair' : 'Mode sombre';
+    }
+    const meta = $('theme-color-meta');
+    if (meta) meta.content = isDark ? '#0b1220' : '#f5f8f5';
+  }
+
   async function init() {
+    applyTheme(localStorage.getItem('csj_theme') || 'dark');
+    $('theme-toggle').addEventListener('click', () => {
+      applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+    });
     $('viewer-login-form').addEventListener('submit', async e => {
       e.preventDefault();
       $('viewer-login-error').textContent = '';
