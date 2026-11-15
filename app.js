@@ -177,7 +177,7 @@
     state.videos = (data.videos || []).sort((a, b) => {
       const da = a.recorded_date || '';
       const db = b.recorded_date || '';
-      return db.localeCompare(da) || String(b.created_at || '').localeCompare(String(a.created_at || ''));
+      return db.localeCompare(da) || String(a.title || '').localeCompare(String(b.title || ''), 'fr', { numeric: true, sensitivity: 'base' }) || String(a.id || '').localeCompare(String(b.id || ''));
     });
     renderVideos();
     renderAdminVideos();
@@ -605,7 +605,7 @@
         const url = saved[link.id] || '';
         const created = link.created_at ? new Date(link.created_at).toLocaleString('fr-FR') : 'Date inconnue';
         const active = Number(link.active) === 1;
-        return `<div class="share-link-row"><div class="share-link-info"><strong>Lien ${escapeHtml(String(link.id).slice(0, 8))} · ${active ? 'Actif' : 'Révoqué'}</strong><small>Créé le ${escapeHtml(created)}</small><div class="share-link-stats"><b>${Number(link.visits || 0)}</b> visites · <b>${Number(link.visitors || 0)}</b> visiteurs uniques</div>${url && active ? `<input class="share-link-url" readonly value="${escapeHtml(url)}" aria-label="URL du lien privé">` : (!url && active ? '<small class="muted">URL disponible uniquement sur le navigateur où le lien a été créé.</small>' : '')}</div><div class="share-link-actions">${url && active ? `<button class="button button-quiet" type="button" data-copy-share="${escapeHtml(link.id)}">Copier</button>` : ''}${active ? `<button class="button button-danger" type="button" data-delete-share="${escapeHtml(link.id)}">Révoquer</button>` : ''}</div></div>`;
+        return `<div class="share-link-row"><div class="share-link-info"><strong>Lien ${escapeHtml(String(link.id).slice(0, 8))} · ${active ? 'Actif' : 'Révoqué'}</strong><small>Créé le ${escapeHtml(created)}</small><div class="share-link-stats"><b>${Number(link.visits || 0)}</b> visites · <b>${Number(link.visitors || 0)}</b> visiteurs uniques</div>${url && active ? `<input class="share-link-url" readonly value="${escapeHtml(url)}" aria-label="URL du lien privé">` : (!url && active ? '<small class="muted">URL disponible uniquement sur le navigateur où le lien a été créé.</small>' : '')}</div><div class="share-link-actions">${url && active ? `<button class="button button-quiet" type="button" data-copy-share="${escapeHtml(link.id)}">Copier</button>` : ''}${active ? `<button class="button button-danger" type="button" data-delete-share="${escapeHtml(link.id)}">Révoquer</button>` : `<button class="button button-danger" type="button" data-purge-share="${escapeHtml(link.id)}">Supprimer définitivement</button>`}</div></div>`;
       }).join('') || '<p class="muted small">Aucun lien privé actif pour le moment.</p>';
     } catch (error) { box.innerHTML = `<p class="form-error">${escapeHtml(error.message)}</p>`; }
   }
@@ -630,10 +630,20 @@
     if (!id || !confirm('Révoquer ce lien privé ? Il ne permettra plus d’accéder à la vidéothèque.')) return;
     try {
       await api(`/api/admin/share-links/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      await loadShareLinks();
+      toast('Lien privé révoqué.');
+    } catch (error) { $('share-error').textContent = error.message; }
+  }
+
+
+  async function permanentlyDeleteShareLink(id) {
+    if (!id || !confirm('Supprimer définitivement ce lien et ses statistiques ? Cette action est irréversible.')) return;
+    try {
+      await api(`/api/admin/share-links/${encodeURIComponent(id)}?permanent=1`, { method: 'DELETE' });
       const saved = getSavedShareUrls(); delete saved[id];
       localStorage.setItem('csj_share_links', JSON.stringify(saved));
       await loadShareLinks();
-      toast('Lien privé révoqué.');
+      toast('Lien et statistiques supprimés définitivement.');
     } catch (error) { $('share-error').textContent = error.message; }
   }
 
@@ -800,8 +810,10 @@
     $('make-share-link').addEventListener('click', makeShareLink);
     $('share-links-list').addEventListener('click', e => {
       const del = e.target.closest('[data-delete-share]');
+      const purge = e.target.closest('[data-purge-share]');
       const copy = e.target.closest('[data-copy-share]');
       if (del) deleteShareLink(del.dataset.deleteShare);
+      if (purge) permanentlyDeleteShareLink(purge.dataset.purgeShare);
       if (copy) copyShareLink(copy.dataset.copyShare);
     });
     $('video-thumbnail-mode').addEventListener('change', updateThumbnailMode);
@@ -824,8 +836,9 @@
       setStatus(true, 'API disponible');
     } catch { setStatus(false, 'API inaccessible'); }
 
-    const fragment = new URLSearchParams(location.hash.slice(1));
-    const secret = new URLSearchParams(location.search).get('access') || fragment.get('access');
+    const queryParams = new URLSearchParams(location.search);
+    const fragment = new URLSearchParams(location.hash.replace(/^#/, ''));
+    const secret = queryParams.get('access') || fragment.get('access');
     if (secret) {
       clearSession();
       history.replaceState(null, '', location.pathname);
