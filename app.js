@@ -128,7 +128,7 @@
       showView('library');
       setStatus(true, 'Connecté');
       if (state.role === 'admin') $('admin-toggle').classList.remove('hidden');
-      logEvent('visit', null, 0);
+      else logEvent('visit', null, 0);
     } catch (error) {
       clearSession();
       showView('access');
@@ -174,7 +174,11 @@
     if (category) params.set('category', category);
 
     const data = await api(`/api/videos?${params.toString()}`);
-    state.videos = data.videos || [];
+    state.videos = (data.videos || []).sort((a, b) => {
+      const da = a.recorded_date || '';
+      const db = b.recorded_date || '';
+      return db.localeCompare(da) || String(b.created_at || '').localeCompare(String(a.created_at || ''));
+    });
     renderVideos();
     renderAdminVideos();
 
@@ -341,7 +345,7 @@
   async function showAdmin() {
     if (state.role !== 'admin') return;
     try {
-      await Promise.all([loadCategories(), loadVideos(), loadStats()]);
+      await Promise.all([loadCategories(), loadVideos(), loadStats(), loadShareLinks()]);
       showView('admin');
     } catch (e) { toast(e.message); }
   }
@@ -376,11 +380,16 @@
     };
 
     try {
+      const thumbnailMode = $('video-thumbnail-mode').value;
       const thumbnailSecond = Number($('video-thumbnail-second').value || 0);
       let thumbnailData = '';
-      if ($('video-thumbnail-second').value.trim() !== '') {
+      if (thumbnailMode === 'video') {
         try { thumbnailData = await captureThumbnailFromFile(file, thumbnailSecond); }
         catch (thumbError) { throw new Error(`Vignette impossible : ${thumbError.message}`); }
+      } else {
+        const imageFile = $('video-thumbnail-file').files[0];
+        if (!imageFile) throw new Error('Sélectionne le fichier image à utiliser comme vignette.');
+        thumbnailData = await imageFileToDataUrl(imageFile);
       }
       const metadata = {
         filename: file.name,
@@ -420,6 +429,8 @@
         });
       }
       $('upload-form').reset();
+      $('video-thumbnail-mode').value = 'video';
+      updateThumbnailMode();
       $('video-year').value = '';
       toast('Vidéo publiée avec succès.');
       await Promise.all([loadVideos(), loadStats()]);
@@ -457,6 +468,9 @@
     $('edit-video-category').value = video.category || state.categories[0] || '';
     $('edit-video-people').value = people.join(', ');
     $('edit-thumbnail-second').value = video.thumbnail_second ?? 0;
+    $('edit-thumbnail-mode').value = 'keep';
+    $('edit-thumbnail-file').value = '';
+    updateEditThumbnailMode();
     $('edit-video-error').textContent = '';
     $('edit-video-modal').classList.remove('hidden');
   }
@@ -483,13 +497,21 @@
       people: $('edit-video-people').value.split(',').map(x => x.trim()).filter(Boolean)
     };
     try {
+      const thumbMode = $('edit-thumbnail-mode').value;
+      if (thumbMode === 'file' && !$('edit-thumbnail-file').files[0]) throw new Error('Sélectionne le fichier image à utiliser comme vignette.');
       await api(`/api/admin/videos/${encodeURIComponent(video.id)}`, {
         method: 'PUT', body: JSON.stringify({ ...payload, thumbnail_second: thumbnailSecond })
       });
-      if ($('edit-thumbnail-second').value.trim() !== '') {
-        const thumbnailData = await captureThumbnailFromVideo(video.id, thumbnailSecond);
+      if (thumbMode !== 'keep') {
+        let thumbnailData;
+        if (thumbMode === 'video') thumbnailData = await captureThumbnailFromVideo(video.id, thumbnailSecond);
+        else {
+          const imageFile = $('edit-thumbnail-file').files[0];
+          if (!imageFile) throw new Error('Sélectionne le fichier image à utiliser comme vignette.');
+          thumbnailData = await imageFileToDataUrl(imageFile);
+        }
         await api(`/api/admin/videos/${encodeURIComponent(video.id)}/thumbnail`, {
-          method: 'POST', body: JSON.stringify({ thumbnail_data: thumbnailData, thumbnail_second: thumbnailSecond })
+          method: 'POST', body: JSON.stringify({ thumbnail_data: thumbnailData, thumbnail_second: thumbMode === 'video' ? thumbnailSecond : null })
         });
       }
       closeEditVideo();
@@ -558,50 +580,102 @@
   }
 
 
+  function getSavedShareUrls() {
+    try {
+      const current = JSON.parse(localStorage.getItem('csj_share_links') || '{}');
+      if (Object.keys(current).length) return current;
+      const legacy = JSON.parse(localStorage.getItem('csj_share_link') || 'null');
+      if (legacy?.id && legacy?.url) {
+        const migrated = { [legacy.id]: legacy.url };
+        localStorage.setItem('csj_share_links', JSON.stringify(migrated));
+        return migrated;
+      }
+      return {};
+    } catch { return {}; }
+  }
+
+  async function loadShareLinks() {
+    const box = $('share-links-list');
+    if (!box || state.role !== 'admin') return;
+    try {
+      const data = await api('/api/admin/share-links');
+      const saved = getSavedShareUrls();
+      const links = data.links || [];
+      box.innerHTML = links.map(link => {
+        const url = saved[link.id] || '';
+        const created = link.created_at ? new Date(link.created_at).toLocaleString('fr-FR') : 'Date inconnue';
+        const active = Number(link.active) === 1;
+        return `<div class="share-link-row"><div class="share-link-info"><strong>Lien ${escapeHtml(String(link.id).slice(0, 8))} · ${active ? 'Actif' : 'Révoqué'}</strong><small>Créé le ${escapeHtml(created)}</small><div class="share-link-stats"><b>${Number(link.visits || 0)}</b> visites · <b>${Number(link.visitors || 0)}</b> visiteurs uniques</div>${url && active ? `<input class="share-link-url" readonly value="${escapeHtml(url)}" aria-label="URL du lien privé">` : (!url && active ? '<small class="muted">URL disponible uniquement sur le navigateur où le lien a été créé.</small>' : '')}</div><div class="share-link-actions">${url && active ? `<button class="button button-quiet" type="button" data-copy-share="${escapeHtml(link.id)}">Copier</button>` : ''}${active ? `<button class="button button-danger" type="button" data-delete-share="${escapeHtml(link.id)}">Révoquer</button>` : ''}</div></div>`;
+      }).join('') || '<p class="muted small">Aucun lien privé actif pour le moment.</p>';
+    } catch (error) { box.innerHTML = `<p class="form-error">${escapeHtml(error.message)}</p>`; }
+  }
+
   async function makeShareLink() {
     const secret = $('share-token').value.trim();
     $('share-error').textContent = '';
-    if (secret.length < 8) {
-      $('share-error').textContent = 'Choisis un code d’au moins 8 caractères.';
-      return;
-    }
+    if (secret.length < 8) { $('share-error').textContent = 'Choisis un code d’au moins 8 caractères.'; return; }
     try {
       const data = await api('/api/admin/share-links', { method: 'POST', body: JSON.stringify({ secret }) });
       const url = new URL(location.pathname, location.origin);
       url.searchParams.set('access', secret);
-      $('share-url').value = url.toString();
-      $('share-result').classList.remove('hidden');
-      $('delete-share-link').dataset.linkId = data.id;
-      $('delete-share-link').classList.remove('hidden');
-      localStorage.setItem('csj_share_link', JSON.stringify({ id: data.id, url: url.toString() }));
+      const saved = getSavedShareUrls(); saved[data.id] = url.toString();
+      localStorage.setItem('csj_share_links', JSON.stringify(saved));
       $('share-token').value = '';
+      await loadShareLinks();
       toast('Lien privé créé.');
     } catch (error) { $('share-error').textContent = error.message; }
   }
 
-  function restoreShareLink() {
-    try {
-      const saved = JSON.parse(localStorage.getItem('csj_share_link') || 'null');
-      if (!saved?.id || !saved?.url) return;
-      $('share-url').value = saved.url;
-      $('share-result').classList.remove('hidden');
-      $('delete-share-link').dataset.linkId = saved.id;
-      $('delete-share-link').classList.remove('hidden');
-    } catch { localStorage.removeItem('csj_share_link'); }
-  }
-
-  async function deleteShareLink() {
-    const id = $('delete-share-link').dataset.linkId;
-    if (!id || !confirm('Supprimer ce lien privé ? Il ne permettra plus d’accéder à la vidéothèque.')) return;
+  async function deleteShareLink(id) {
+    if (!id || !confirm('Révoquer ce lien privé ? Il ne permettra plus d’accéder à la vidéothèque.')) return;
     try {
       await api(`/api/admin/share-links/${encodeURIComponent(id)}`, { method: 'DELETE' });
-      localStorage.removeItem('csj_share_link');
-      $('share-url').value = '';
-      $('share-result').classList.add('hidden');
-      $('delete-share-link').classList.add('hidden');
-      delete $('delete-share-link').dataset.linkId;
+      const saved = getSavedShareUrls(); delete saved[id];
+      localStorage.setItem('csj_share_links', JSON.stringify(saved));
+      await loadShareLinks();
       toast('Lien privé révoqué.');
     } catch (error) { $('share-error').textContent = error.message; }
+  }
+
+  async function copyShareLink(id) {
+    const saved = getSavedShareUrls();
+    if (!saved[id]) return;
+    try { await navigator.clipboard.writeText(saved[id]); toast('Lien copié.'); }
+    catch { toast('Copie impossible dans ce navigateur.'); }
+  }
+
+  function updateThumbnailMode() {
+    const fromVideo = $('video-thumbnail-mode').value === 'video';
+    $('video-thumbnail-second-wrap').classList.toggle('hidden', !fromVideo);
+    $('video-thumbnail-file-wrap').classList.toggle('hidden', fromVideo);
+  }
+
+  function updateEditThumbnailMode() {
+    const mode = $('edit-thumbnail-mode').value;
+    $('edit-thumbnail-second-wrap').classList.toggle('hidden', mode !== 'video');
+    $('edit-thumbnail-file-wrap').classList.toggle('hidden', mode !== 'file');
+  }
+
+  function imageFileToDataUrl(file) {
+    if (!file || !/^image\/(jpeg|png|webp)$/.test(file.type)) throw new Error('Format image non accepté. Utilise JPG, PNG ou WebP.');
+    if (file.size > 8 * 1024 * 1024) throw new Error('L’image doit faire moins de 8 Mo.');
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const image = new Image();
+      image.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          const scale = Math.min(1, 640 / image.width, 360 / image.height);
+          canvas.width = Math.max(1, Math.round(image.width * scale));
+          canvas.height = Math.max(1, Math.round(image.height * scale));
+          canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL('image/jpeg', 0.82));
+        } catch (e) { reject(e); }
+        finally { URL.revokeObjectURL(url); }
+      };
+      image.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Impossible de lire cette image.')); };
+      image.src = url;
+    });
   }
 
   function applyTheme(theme) {
@@ -718,14 +792,21 @@
     });
 
     $('refresh-admin').addEventListener('click', () =>
-      Promise.all([loadVideos(), loadStats()])
+      Promise.all([loadVideos(), loadStats(), loadShareLinks()])
         .then(() => toast('Données actualisées.'))
         .catch(e => toast(e.message))
     );
 
     $('make-share-link').addEventListener('click', makeShareLink);
-    $('delete-share-link').addEventListener('click', deleteShareLink);
-    restoreShareLink();
+    $('share-links-list').addEventListener('click', e => {
+      const del = e.target.closest('[data-delete-share]');
+      const copy = e.target.closest('[data-copy-share]');
+      if (del) deleteShareLink(del.dataset.deleteShare);
+      if (copy) copyShareLink(copy.dataset.copyShare);
+    });
+    $('video-thumbnail-mode').addEventListener('change', updateThumbnailMode);
+    $('edit-thumbnail-mode').addEventListener('change', updateEditThumbnailMode);
+    updateThumbnailMode(); updateEditThumbnailMode();
     $('copy-share-link').addEventListener('click', async () => {
       try {
         await navigator.clipboard.writeText($('share-url').value);
@@ -743,19 +824,18 @@
       setStatus(true, 'API disponible');
     } catch { setStatus(false, 'API inaccessible'); }
 
-    if (state.token) {
-      await enterLibrary();
-      return;
-    }
     const fragment = new URLSearchParams(location.hash.slice(1));
     const secret = new URLSearchParams(location.search).get('access') || fragment.get('access');
     if (secret) {
+      clearSession();
       history.replaceState(null, '', location.pathname);
       try { await viewerLogin(secret); }
       catch (e) {
         $('viewer-login-error').textContent = e.message;
         showView('access');
       }
+    } else if (state.token) {
+      await enterLibrary();
     } else {
       showView('access');
     }
