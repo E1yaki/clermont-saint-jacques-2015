@@ -257,7 +257,10 @@
       const data = await api(`/api/video/${encodeURIComponent(id)}/ticket`);
       state.activeVideo = video;
       $('player-title').textContent = video.title;
+      $('player-subtitle').textContent = [video.category, video.year].filter(Boolean).join(' · ');
+      $('player-subtitle').classList.toggle('hidden', !video.category && !video.year);
       $('player-description').textContent = video.description || '';
+      $('player-description').classList.toggle('hidden', !video.description);
 
       const player = $('video-player');
       // Installer les diagnostics avant de définir la source : certains événements
@@ -266,6 +269,7 @@
       player.removeAttribute('src');
       player.load();
       player.crossOrigin = 'anonymous';
+      player.autoplay = true;
       player.onerror = () => {
         const messages = {
           1: 'Lecture interrompue.',
@@ -281,7 +285,7 @@
       };
       player.onloadedmetadata = () => {
         const status = $('player-status');
-        if (status) status.textContent = 'Vidéo chargée. Tu peux lancer la lecture.';
+        if (status && player.paused) status.textContent = 'Vidéo chargée. Démarrage de la lecture…';
       };
       player.onplaying = () => {
         const status = $('player-status');
@@ -297,6 +301,15 @@
       $('player-modal').classList.remove('hidden');
       player.src = `${API}/api/video/${encodeURIComponent(id)}?ticket=${encodeURIComponent(data.ticket)}`;
       player.load();
+      // Lancer automatiquement la lecture dès que le navigateur le permet.
+      // L'attribut autoplay sert également de repli lorsque le flux met du temps à arriver.
+      const playAttempt = player.play();
+      if (playAttempt && typeof playAttempt.catch === 'function') {
+        playAttempt.catch(() => {
+          const status = $('player-status');
+          if (status) status.textContent = 'La lecture automatique est bloquée par le navigateur. Appuie sur ▶ pour démarrer.';
+        });
+      }
 
       logEvent('play', id, 0);
       player.onplay = () => {

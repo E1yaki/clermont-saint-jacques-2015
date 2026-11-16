@@ -268,3 +268,22 @@ html[data-theme="light"] .edit-dialog input,html[data-theme="light"] .edit-dialo
 html[data-theme="dark"] .edit-dialog{background:#111c2d;color:#f3f6fb;border-color:#34445b}
 html[data-theme="dark"] .edit-dialog label{color:#d0dbe8}
 html[data-theme="dark"] .edit-dialog input,html[data-theme="dark"] .edit-dialog textarea,html[data-theme="dark"] .edit-dialog select{background:#0b1525;color:#f3f6fb;border-color:#34445b}
+
+/* Informations affichées sous la vidéo dans le lecteur */
+.player-subtitle{
+  margin:12px 0 0;
+  color:var(--green-dark,#285b3b);
+  font-size:12px;
+  font-weight:800;
+  letter-spacing:.5px;
+}
+.player-description{
+  margin:12px 0 0;
+  padding-top:12px;
+  border-top:1px solid var(--line);
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.65;
+  white-space:pre-wrap;
+}
+html[data-theme="dark"] .player-subtitle{color:#b9e78a}

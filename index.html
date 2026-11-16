@@ -131,7 +131,7 @@
     </div>
   </div>
 
-  <div id="player-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="player-title"><div class="modal-backdrop" data-close-player></div><div class="player-dialog"><div class="player-top"><div><span class="card-kicker">LECTURE VIDÉO</span><h2 id="player-title">Vidéo</h2></div><button id="close-player" class="close-button" aria-label="Fermer" type="button">×</button></div><video id="video-player" controls playsinline preload="metadata"></video><p id="player-status" class="player-status" role="status">Préparation de la lecture…</p><p id="player-description" class="muted small"></p></div></div>
+  <div id="player-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="player-title"><div class="modal-backdrop" data-close-player></div><div class="player-dialog"><div class="player-top"><div><span class="card-kicker">LECTURE VIDÉO</span><h2 id="player-title">Vidéo</h2></div><button id="close-player" class="close-button" aria-label="Fermer" type="button">×</button></div><video id="video-player" controls playsinline preload="auto" autoplay></video><p id="player-subtitle" class="player-subtitle"></p><p id="player-status" class="player-status" role="status">Préparation de la lecture…</p><p id="player-description" class="player-description muted small hidden"></p></div></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="app.js"></script>
 </body>
